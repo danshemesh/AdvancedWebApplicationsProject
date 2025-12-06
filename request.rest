@@ -1,0 +1,24 @@
+### Posts API
+POST http://localhost:3000/post
+Content-Type: application/json
+{
+  "content": "This is my second post",
+  "senderId": "507f1f77bcf86cd799439011"
+}
+###
+
+GET http://localhost:3000/post
+###
+
+GET http://localhost:3000/post?sender=507f1f77bcf86cd799439011
+###
+
+GET http://localhost:3000/post/6934424a20357735bc7e14ae
+###
+
+PUT http://localhost:3000/post/6934424a20357735bc7e14ae
+Content-Type: application/json
+{
+  "content": "Updated post content"
+}
+
