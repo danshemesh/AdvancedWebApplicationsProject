@@ -1,20 +1,21 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const commentRoutes = require('./routes/comment');
+const postRoutes = require('./routes/post');
 
 const app = express();
 const PORT = process.env.PORT;
 
 app.use(express.json());
+app.use('/comment', commentRoutes);
+app.use('/post', postRoutes);
 
 const MONGO_URI = process.env.MONGODB_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
-
-const postRoutes = require('./routes/post');
-app.use('/post', postRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
