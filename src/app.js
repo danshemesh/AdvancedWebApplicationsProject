@@ -1,11 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const commentRoutes = require('./routes/comment');
 
 const app = express();
 const PORT = process.env.PORT;
 
 app.use(express.json());
+app.use('/comment', commentRoutes);
 
 const MONGO_URI = process.env.MONGODB_URI;
 

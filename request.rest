@@ -1,0 +1,31 @@
+### Comments API
+
+POST http://localhost:3000/comment
+Content-Type: application/json
+
+{
+  "postId" : "POST_ID_HERE",
+  "content" : "this is my new comment",
+  "authorId" : "USER_ID_HERE"
+}
+
+###
+
+GET http://localhost:3000/comment?postId=POST_ID_HERE
+
+###
+
+GET http://localhost:3000/comment/COMMENT_ID_HERE
+
+###
+
+PUT http://localhost:3000/comment/COMMENT_ID_HERE
+Content-Type: application/json
+
+{
+  "content" : "updated comment content"
+}
+
+###
+
+DELETE http://localhost:3000/comment/COMMENT_ID_HERE
