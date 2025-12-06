@@ -1,31 +1,53 @@
-### Comments API
+### Posts API
+POST http://localhost:3000/post
 
+Content-Type: application/json
+
+{
+  "content": "This is my second post",
+  "senderId": "507f1f77bcf86cd799439011"
+}
+###
+
+GET http://localhost:3000/post
+###
+
+GET http://localhost:3000/post?sender=507f1f77bcf86cd799439011
+###
+
+GET http://localhost:3000/post/6934424a20357735bc7e14ae
+###
+
+PUT http://localhost:3000/post/6934424a20357735bc7e14ae
+Content-Type: application/json
+
+{
+  "content": "Updated post content"
+}
+
+### Comments API
 POST http://localhost:3000/comment
 Content-Type: application/json
 
 {
-  "postId" : "POST_ID_HERE",
-  "content" : "this is my new comment",
-  "authorId" : "USER_ID_HERE"
+  "postId": "6934424a20357735bc7e14ae",
+  "content": "This is my new comment",
+  "authorId": "507f1f77bcf86cd799439011"
 }
-
 ###
 
-GET http://localhost:3000/comment?postId=POST_ID_HERE
-
+GET http://localhost:3000/comment?postId=6934424a20357735bc7e14ae
 ###
 
 GET http://localhost:3000/comment/COMMENT_ID_HERE
-
 ###
 
 PUT http://localhost:3000/comment/COMMENT_ID_HERE
 Content-Type: application/json
 
 {
-  "content" : "updated comment content"
+  "content": "Updated comment content"
 }
-
 ###
 
 DELETE http://localhost:3000/comment/COMMENT_ID_HERE
