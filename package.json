@@ -1,0 +1,26 @@
+{
+  "name": "advancedwebapplicationsproject",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danshemesh/AdvancedWebApplicationsProject.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/danshemesh/AdvancedWebApplicationsProject/issues"
+  },
+  "homepage": "https://github.com/danshemesh/AdvancedWebApplicationsProject#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mongoose": "^9.0.1"
+  }
+}
