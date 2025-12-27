@@ -73,7 +73,6 @@ export const updatePost = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Authorization check: only post owner can update
     if (post.senderId.toString() !== req.user!.id) {
       res.status(403).json({ error: 'You can only update your own posts' });
       return;
@@ -106,7 +105,6 @@ export const deletePost = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Authorization check: only post owner can delete
     if (post.senderId.toString() !== req.user!.id) {
       res.status(403).json({ error: 'You can only delete your own posts' });
       return;

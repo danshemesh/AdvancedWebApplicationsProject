@@ -17,7 +17,6 @@ export const createComment = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Verify the post exists
     const post = await Post.findById(postId);
     if (!post) {
       res.status(404).json({ error: 'Post not found' });
@@ -105,7 +104,6 @@ export const updateComment = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Authorization check: only comment author can update
     if (comment.authorId.toString() !== req.user!.id) {
       res.status(403).json({ error: 'You can only update your own comments' });
       return;
@@ -138,7 +136,6 @@ export const deleteComment = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    // Authorization check: only comment author can delete
     if (comment.authorId.toString() !== req.user!.id) {
       res.status(403).json({ error: 'You can only delete your own comments' });
       return;
