@@ -1,52 +1,122 @@
-### Posts API
-POST http://localhost:3000/post
+### ===========================================
+### Auth API (get tokens first!)
+### ===========================================
+
+### Register a new user
+POST http://localhost:3000/auth/register
 Content-Type: application/json
 
 {
-  "content": "This is my second post",
-  "senderId": "507f1f77bcf86cd799439011"
+  "username": "hello",
+  "email": "hello@example.com",
+  "password": "password12wwww3"
 }
+
 ###
 
-GET http://localhost:3000/post
-###
-
-GET http://localhost:3000/post?sender=507f1f77bcf86cd799439011
-###
-
-GET http://localhost:3000/post/6934424a20357735bc7e14ae
-###
-
-PUT http://localhost:3000/post/6934424a20357735bc7e14ae
+### Login (use this to get fresh tokens)
+POST http://localhost:3000/auth/login
 Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+###
+
+### ===========================================
+### Posts API (requires authentication)
+### Copy the accessToken from login response and paste below
+### ===========================================
+
+@token = YOUR_ACCESS_TOKEN_HERE
+
+### Create a new post
+POST http://localhost:3000/post
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "content": "This is my first post!"
+}
+
+###
+
+### Get all posts
+GET http://localhost:3000/post
+Authorization: Bearer {{token}}
+
+###
+
+### Get posts by sender (replace with actual user ID)
+GET http://localhost:3000/post?sender=USER_ID_HERE
+Authorization: Bearer {{token}}
+
+###
+
+### Get post by ID (replace with actual post ID)
+GET http://localhost:3000/post/POST_ID_HERE
+Authorization: Bearer {{token}}
+
+###
+
+### Update post (replace with actual post ID - only owner can update)
+PUT http://localhost:3000/post/POST_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "content": "Updated post content"
 }
 
-### Comments API
+###
+
+### Delete post (replace with actual post ID - only owner can delete)
+DELETE http://localhost:3000/post/POST_ID_HERE
+Authorization: Bearer {{token}}
+
+###
+
+### ===========================================
+### Comments API (to be implemented in step 3)
+### ===========================================
+
+### Create comment
 POST http://localhost:3000/comment
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
-  "postId": "6934424a20357735bc7e14ae",
-  "content": "This is my new comment",
-  "authorId": "507f1f77bcf86cd799439011"
+  "postId": "POST_ID_HERE",
+  "content": "This is my comment"
 }
+
 ###
 
-GET http://localhost:3000/comment?postId=6934424a20357735bc7e14ae
+### Get comments by post
+GET http://localhost:3000/comment?post=POST_ID_HERE
+Authorization: Bearer {{token}}
+
 ###
 
+### Get comment by ID
 GET http://localhost:3000/comment/COMMENT_ID_HERE
+Authorization: Bearer {{token}}
+
 ###
 
+### Update comment (only author can update)
 PUT http://localhost:3000/comment/COMMENT_ID_HERE
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "content": "Updated comment content"
 }
+
 ###
 
+### Delete comment (only author can delete)
 DELETE http://localhost:3000/comment/COMMENT_ID_HERE
+Authorization: Bearer {{token}}
