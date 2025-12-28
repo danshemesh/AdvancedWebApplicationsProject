@@ -6,6 +6,8 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import { swaggerOptions } from './config/swagger';
 import userRoutes from './routes/user';
 import authRoutes from './routes/auth';
+import postRoutes from './routes/post';
+import commentRoutes from './routes/comment';
 
 dotenv.config();
 
@@ -18,6 +20,8 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/user', userRoutes);
 app.use('/auth', authRoutes);
+app.use('/post', postRoutes);
+app.use('/comment', commentRoutes);
 
 if (process.env.NODE_ENV !== 'test') {
   const MONGO_URI = process.env.MONGODB_URI || '';
