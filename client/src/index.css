@@ -1,0 +1,250 @@
+:root {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #2c2825;
+  background-color: #f5f0eb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  font-weight: 500;
+  color: #6b5344;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+button {
+  border-radius: 6px;
+  border: 1px solid #c4b5a5;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  background-color: #e8dfd4;
+  color: #2c2825;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background-color: #ddd4c8;
+}
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+input {
+  font-size: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #c4b5a5;
+  border-radius: 6px;
+  background: #fff;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Auth */
+.auth-page {
+  text-align: center;
+  padding-top: 2rem;
+}
+.auth-page h1 {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+.tagline {
+  color: #6b5344;
+  margin-bottom: 2rem;
+}
+.auth-form {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  text-align: left;
+}
+.auth-form h2 {
+  margin-top: 0;
+}
+.auth-form label {
+  display: block;
+  margin-bottom: 1rem;
+}
+.auth-form label:first-of-type {
+  margin-top: 0;
+}
+.auth-form input {
+  margin-top: 0.25rem;
+}
+.auth-form button {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+}
+.auth-switch {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+.error {
+  color: #b33;
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+/* Layout */
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.navbar {
+  background: #e8dfd4;
+  border-bottom: 1px solid #c4b5a5;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.navbar a {
+  font-weight: 600;
+}
+.navbar .brand {
+  font-size: 1.25rem;
+  color: #2c2825;
+}
+.navbar .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.navbar button {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+}
+.main {
+  flex: 1;
+}
+
+/* Feed */
+.feed-page h1 {
+  margin-bottom: 1rem;
+}
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.post-item {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.post-content {
+  margin: 0 0 0.5rem;
+  white-space: pre-wrap;
+}
+.post-meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b5344;
+}
+
+/* User details */
+.user-details-page .user-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.avatar-wrap {
+  flex-shrink: 0;
+}
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+.avatar.placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #ddd4c8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #6b5344;
+}
+.avatar-upload {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #6b5344;
+}
+.avatar-upload input {
+  display: none;
+}
+.user-info {
+  flex: 1;
+  min-width: 200px;
+}
+.username-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.username-form input {
+  margin-top: 0.25rem;
+  max-width: 240px;
+}
+.username-form button {
+  margin-top: 0.5rem;
+}
+.email {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+  color: #6b5344;
+}
+.muted {
+  color: #6b5344;
+  font-size: 0.95rem;
+}
