@@ -36,6 +36,11 @@ export const swaggerOptions = {
               type: 'string',
               description: 'User email',
             },
+            profilePicturePath: {
+              type: 'string',
+              description: 'Relative path to profile picture (e.g. avatars/userId-timestamp.jpg)',
+              nullable: true,
+            },
             createdAt: {
               type: 'string',
               format: 'date-time',

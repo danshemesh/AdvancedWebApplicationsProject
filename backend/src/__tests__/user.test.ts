@@ -27,6 +27,25 @@ jest.mock('../middleware/auth', () => ({
   },
 }));
 
+// Mock upload middleware - inject req.file when X-Inject-Avatar header is set (so we don't touch filesystem)
+jest.mock('../middleware/upload', () => ({
+  uploadAvatar: (req: any, res: any, next: any) => {
+    if (req.headers['x-inject-avatar'] === 'yes') {
+      req.file = {
+        fieldname: 'avatar',
+        originalname: 'avatar.jpg',
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        size: 1024,
+        destination: 'uploads/avatars',
+        filename: '507f1f77bcf86cd799439011-1234567890.jpg',
+        path: 'uploads/avatars/507f1f77bcf86cd799439011-1234567890.jpg',
+      };
+    }
+    next();
+  },
+}));
+
 // Mock bcrypt
 jest.mock('bcryptjs');
 import bcrypt from 'bcryptjs';
@@ -200,21 +219,85 @@ describe('User CRUD Endpoints - Unit Tests', () => {
   });
 
   describe('PUT /user/:id', () => {
-    it('should update user with valid data', async () => {
+    it('should update another user (non-self) with username and email', async () => {
+      const otherUserId = '507f1f77bcf86cd799439012';
       const updateData = {
         username: 'updateduser',
         email: 'updated@example.com',
       };
 
       const mockUserToUpdate = {
-        ...mockUserData,
+        _id: otherUserId,
         username: updateData.username,
         email: updateData.email,
         save: jest.fn().mockResolvedValue(true),
         toObject: jest.fn().mockReturnValue({
-          _id: mockUserId,
+          _id: otherUserId,
           username: updateData.username,
           email: updateData.email,
+        }),
+      };
+
+      (MockedUser.findById as jest.Mock) = jest.fn().mockResolvedValue(mockUserToUpdate);
+
+      const response = await request(app)
+        .put(`/user/${otherUserId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.username).toBe(updateData.username);
+      expect(response.body.email).toBe(updateData.email);
+      expect(response.body).not.toHaveProperty('password');
+      expect(mockUserToUpdate.save).toHaveBeenCalled();
+    });
+
+    it('should update password when provided (only for non-self update)', async () => {
+      const otherUserId = '507f1f77bcf86cd799439012';
+      const updateData = {
+        password: 'newpassword123',
+      };
+
+      const mockUserToUpdate = {
+        _id: otherUserId,
+        username: 'otheruser',
+        email: 'other@example.com',
+        password: 'oldhashed',
+        save: jest.fn().mockResolvedValue(true),
+        toObject: jest.fn().mockReturnValue({
+          _id: otherUserId,
+          username: 'otheruser',
+          email: 'other@example.com',
+        }),
+      };
+
+      (MockedUser.findById as jest.Mock) = jest.fn().mockResolvedValue(mockUserToUpdate);
+      (MockedBcrypt.hash as jest.Mock) = jest.fn().mockResolvedValue('newhashedpassword');
+
+      await request(app)
+        .put(`/user/${otherUserId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(MockedBcrypt.hash).toHaveBeenCalledWith(updateData.password, 10);
+      expect(mockUserToUpdate.password).toBe('newhashedpassword');
+    });
+
+    it('when updating own profile (same id as token), only username is updated; email and password are ignored', async () => {
+      const updateData = {
+        username: 'newname',
+        email: 'hacker@evil.com',
+        password: 'newpassword123',
+      };
+
+      const mockUserToUpdate = {
+        ...mockUserData,
+        save: jest.fn().mockResolvedValue(true),
+        toObject: jest.fn().mockReturnValue({
+          _id: mockUserId,
+          username: 'newname',
+          email: 'test@example.com',
         }),
       };
 
@@ -226,39 +309,9 @@ describe('User CRUD Endpoints - Unit Tests', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body.username).toBe(updateData.username);
-      expect(response.body.email).toBe(updateData.email);
-      expect(response.body).not.toHaveProperty('password');
-      expect(mockUserToUpdate.save).toHaveBeenCalled();
-    });
-
-    it('should update password when provided', async () => {
-      const updateData = {
-        password: 'newpassword123',
-      };
-
-      const mockUserToUpdate = {
-        ...mockUserData,
-        password: 'oldhashed',
-        save: jest.fn().mockResolvedValue(true),
-        toObject: jest.fn().mockReturnValue({
-          _id: mockUserId,
-          username: 'testuser',
-          email: 'test@example.com',
-        }),
-      };
-
-      (MockedUser.findById as jest.Mock) = jest.fn().mockResolvedValue(mockUserToUpdate);
-      (MockedBcrypt.hash as jest.Mock) = jest.fn().mockResolvedValue('newhashedpassword');
-
-      await request(app)
-        .put(`/user/${mockUserId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .send(updateData)
-        .expect(200);
-
-      expect(MockedBcrypt.hash).toHaveBeenCalledWith(updateData.password, 10);
-      expect(mockUserToUpdate.password).toBe('newhashedpassword');
+      expect(response.body.username).toBe('newname');
+      expect(response.body.email).toBe('test@example.com');
+      expect(MockedBcrypt.hash).not.toHaveBeenCalled();
     });
 
     it('should return 404 for non-existent user', async () => {
@@ -284,6 +337,57 @@ describe('User CRUD Endpoints - Unit Tests', () => {
         .put(`/user/${mockUserId}`)
         .send({ username: 'test' })
         .expect(401);
+    });
+  });
+
+  describe('PUT /user/:id/avatar', () => {
+    it('should upload avatar and return user when own id and file provided', async () => {
+      const mockUserToUpdate = {
+        ...mockUserData,
+        profilePicturePath: undefined,
+        save: jest.fn().mockResolvedValue(true),
+        toObject: jest.fn().mockReturnValue({
+          _id: mockUserId,
+          username: 'testuser',
+          email: 'test@example.com',
+          profilePicturePath: 'avatars/507f1f77bcf86cd799439011-1234567890.jpg',
+        }),
+      };
+
+      (MockedUser.findById as jest.Mock) = jest.fn().mockResolvedValue(mockUserToUpdate);
+
+      const response = await request(app)
+        .put(`/user/${mockUserId}/avatar`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .set('X-Inject-Avatar', 'yes')
+        .expect(200);
+
+      expect(response.body.profilePicturePath).toBe('avatars/507f1f77bcf86cd799439011-1234567890.jpg');
+      expect(mockUserToUpdate.save).toHaveBeenCalled();
+    });
+
+    it('should return 403 when updating another user avatar', async () => {
+      const otherUserId = '507f1f77bcf86cd799439012';
+
+      await request(app)
+        .put(`/user/${otherUserId}/avatar`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .set('X-Inject-Avatar', 'yes')
+        .expect(403);
+    });
+
+    it('should return 401 without token', async () => {
+      await request(app)
+        .put(`/user/${mockUserId}/avatar`)
+        .set('X-Inject-Avatar', 'yes')
+        .expect(401);
+    });
+
+    it('should return 400 when no file provided', async () => {
+      await request(app)
+        .put(`/user/${mockUserId}/avatar`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(400);
     });
   });
 
