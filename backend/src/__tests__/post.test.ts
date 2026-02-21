@@ -100,7 +100,20 @@ describe('Posts Endpoints - Unit Tests', () => {
   });
 
   describe('GET /post', () => {
-    it('should get all posts successfully', async () => {
+    const setupPaginationMock = (mockPosts: any[], total: number) => {
+      (MockedPost.find as jest.Mock) = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            skip: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue(mockPosts),
+            }),
+          }),
+        }),
+      });
+      (MockedPost.countDocuments as jest.Mock) = jest.fn().mockResolvedValue(total);
+    };
+
+    it('should get posts with default pagination (page 1, limit 10)', async () => {
       const mockPosts = [
         {
           _id: mockPostId,
@@ -114,20 +127,79 @@ describe('Posts Endpoints - Unit Tests', () => {
         },
       ];
 
-      (MockedPost.find as jest.Mock) = jest.fn().mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockPosts),
-      });
+      setupPaginationMock(mockPosts, 2);
 
       const response = await request(app)
         .get('/post')
         .set('Authorization', `Bearer ${mockAccessToken}`)
         .expect(200);
 
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBe(2);
+      expect(response.body).toHaveProperty('posts');
+      expect(response.body).toHaveProperty('total', 2);
+      expect(response.body).toHaveProperty('page', 1);
+      expect(response.body).toHaveProperty('totalPages', 1);
+      expect(response.body).toHaveProperty('hasMore', false);
+      expect(Array.isArray(response.body.posts)).toBe(true);
+      expect(response.body.posts.length).toBe(2);
     });
 
-    it('should filter posts by sender query parameter', async () => {
+    it('should get posts with custom page and limit params', async () => {
+      const mockPosts = [
+        {
+          _id: '507f1f77bcf86cd799439044',
+          content: 'Post 3',
+          senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+        },
+      ];
+
+      setupPaginationMock(mockPosts, 15);
+
+      const response = await request(app)
+        .get('/post?page=2&limit=5')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.page).toBe(2);
+      expect(response.body.totalPages).toBe(3);
+    });
+
+    it('should return hasMore true when more pages exist', async () => {
+      const mockPosts = Array(10).fill({
+        _id: mockPostId,
+        content: 'Post',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      });
+
+      setupPaginationMock(mockPosts, 25);
+
+      const response = await request(app)
+        .get('/post?page=1&limit=10')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.hasMore).toBe(true);
+      expect(response.body.totalPages).toBe(3);
+    });
+
+    it('should return hasMore false on last page', async () => {
+      const mockPosts = Array(5).fill({
+        _id: mockPostId,
+        content: 'Post',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      });
+
+      setupPaginationMock(mockPosts, 25);
+
+      const response = await request(app)
+        .get('/post?page=3&limit=10')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.hasMore).toBe(false);
+      expect(response.body.page).toBe(3);
+    });
+
+    it('should filter posts by sender query parameter with pagination', async () => {
       const mockPosts = [
         {
           _id: mockPostId,
@@ -136,9 +208,7 @@ describe('Posts Endpoints - Unit Tests', () => {
         },
       ];
 
-      (MockedPost.find as jest.Mock) = jest.fn().mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockPosts),
-      });
+      setupPaginationMock(mockPosts, 1);
 
       const response = await request(app)
         .get(`/post?sender=${mockUserId}`)
@@ -146,7 +216,9 @@ describe('Posts Endpoints - Unit Tests', () => {
         .expect(200);
 
       expect(MockedPost.find).toHaveBeenCalledWith({ senderId: mockUserId });
-      expect(Array.isArray(response.body)).toBe(true);
+      expect(MockedPost.countDocuments).toHaveBeenCalledWith({ senderId: mockUserId });
+      expect(response.body.posts).toBeDefined();
+      expect(response.body.total).toBe(1);
     });
 
     it('should return 401 without authentication', async () => {

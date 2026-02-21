@@ -30,9 +30,31 @@ export const createPost = async (req: AuthRequest, res: Response): Promise<void>
 
 export const getAllPosts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+    
     const filter = req.query.sender ? { senderId: req.query.sender } : {};
-    const posts = await Post.find(filter).populate('senderId', 'username email');
-    res.status(200).json(posts);
+    
+    const [posts, total] = await Promise.all([
+      Post.find(filter)
+        .populate('senderId', 'username email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Post.countDocuments(filter),
+    ]);
+    
+    const totalPages = Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+    
+    res.status(200).json({
+      posts,
+      total,
+      page,
+      totalPages,
+      hasMore,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
