@@ -1,18 +1,21 @@
 import request from 'supertest';
+import { Types } from 'mongoose';
 import app from '../app';
 import Post from '../models/post';
 import User from '../models/user';
+import Comment from '../models/comment';
 import jwt from 'jsonwebtoken';
+import { getCommentCountsForPosts, addCommentCountsToPosts } from '../controllers/post';
 
-// Mock Post model
 jest.mock('../models/post');
 const MockedPost = Post as jest.Mocked<typeof Post>;
 
-// Mock User model
 jest.mock('../models/user');
 const MockedUser = User as jest.Mocked<typeof User>;
 
-// Mock jsonwebtoken
+jest.mock('../models/comment');
+const MockedComment = Comment as jest.Mocked<typeof Comment>;
+
 jest.mock('jsonwebtoken');
 const MockedJwt = jwt as jest.Mocked<typeof jwt>;
 
@@ -100,7 +103,7 @@ describe('Posts Endpoints - Unit Tests', () => {
   });
 
   describe('GET /post', () => {
-    const setupPaginationMock = (mockPosts: any[], total: number) => {
+    const setupPaginationMock = (mockPosts: any[], total: number, commentCounts: { _id: string; count: number }[] = []) => {
       (MockedPost.find as jest.Mock) = jest.fn().mockReturnValue({
         populate: jest.fn().mockReturnValue({
           sort: jest.fn().mockReturnValue({
@@ -111,20 +114,23 @@ describe('Posts Endpoints - Unit Tests', () => {
         }),
       });
       (MockedPost.countDocuments as jest.Mock) = jest.fn().mockResolvedValue(total);
+      (MockedComment.aggregate as jest.Mock) = jest.fn().mockResolvedValue(commentCounts);
     };
 
     it('should get posts with default pagination (page 1, limit 10)', async () => {
+      const mockPostData1 = {
+        _id: mockPostId,
+        content: 'Post 1',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
+      const mockPostData2 = {
+        _id: '507f1f77bcf86cd799439033',
+        content: 'Post 2',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
       const mockPosts = [
-        {
-          _id: mockPostId,
-          content: 'Post 1',
-          senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
-        },
-        {
-          _id: '507f1f77bcf86cd799439033',
-          content: 'Post 2',
-          senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
-        },
+        { ...mockPostData1, toObject: () => mockPostData1 },
+        { ...mockPostData2, toObject: () => mockPostData2 },
       ];
 
       setupPaginationMock(mockPosts, 2);
@@ -144,12 +150,13 @@ describe('Posts Endpoints - Unit Tests', () => {
     });
 
     it('should get posts with custom page and limit params', async () => {
+      const mockPostData = {
+        _id: '507f1f77bcf86cd799439044',
+        content: 'Post 3',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
       const mockPosts = [
-        {
-          _id: '507f1f77bcf86cd799439044',
-          content: 'Post 3',
-          senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
-        },
+        { ...mockPostData, toObject: () => mockPostData },
       ];
 
       setupPaginationMock(mockPosts, 15);
@@ -164,11 +171,15 @@ describe('Posts Endpoints - Unit Tests', () => {
     });
 
     it('should return hasMore true when more pages exist', async () => {
-      const mockPosts = Array(10).fill({
+      const mockPostData = {
         _id: mockPostId,
         content: 'Post',
         senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
-      });
+      };
+      const mockPosts = Array(10).fill(null).map(() => ({
+        ...mockPostData,
+        toObject: () => mockPostData,
+      }));
 
       setupPaginationMock(mockPosts, 25);
 
@@ -182,11 +193,15 @@ describe('Posts Endpoints - Unit Tests', () => {
     });
 
     it('should return hasMore false on last page', async () => {
-      const mockPosts = Array(5).fill({
+      const mockPostData = {
         _id: mockPostId,
         content: 'Post',
         senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
-      });
+      };
+      const mockPosts = Array(5).fill(null).map(() => ({
+        ...mockPostData,
+        toObject: () => mockPostData,
+      }));
 
       setupPaginationMock(mockPosts, 25);
 
@@ -200,12 +215,13 @@ describe('Posts Endpoints - Unit Tests', () => {
     });
 
     it('should filter posts by sender query parameter with pagination', async () => {
+      const mockPostData = {
+        _id: mockPostId,
+        content: 'Filtered Post',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
       const mockPosts = [
-        {
-          _id: mockPostId,
-          content: 'Filtered Post',
-          senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
-        },
+        { ...mockPostData, toObject: () => mockPostData },
       ];
 
       setupPaginationMock(mockPosts, 1);
@@ -219,6 +235,59 @@ describe('Posts Endpoints - Unit Tests', () => {
       expect(MockedPost.countDocuments).toHaveBeenCalledWith({ senderId: mockUserId });
       expect(response.body.posts).toBeDefined();
       expect(response.body.total).toBe(1);
+    });
+
+    it('should include commentCount in each post', async () => {
+      const postId1 = '507f1f77bcf86cd799439022';
+      const postId2 = '507f1f77bcf86cd799439033';
+      const mockPostData1 = {
+        _id: postId1,
+        content: 'Post with comments',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
+      const mockPostData2 = {
+        _id: postId2,
+        content: 'Post with more comments',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
+      const mockPosts = [
+        { ...mockPostData1, toObject: () => mockPostData1 },
+        { ...mockPostData2, toObject: () => mockPostData2 },
+      ];
+      const commentCounts = [
+        { _id: postId1, count: 3 },
+        { _id: postId2, count: 7 },
+      ];
+
+      setupPaginationMock(mockPosts, 2, commentCounts);
+
+      const response = await request(app)
+        .get('/post')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.posts[0]).toHaveProperty('commentCount', 3);
+      expect(response.body.posts[1]).toHaveProperty('commentCount', 7);
+    });
+
+    it('should return commentCount 0 for posts with no comments', async () => {
+      const mockPostData = {
+        _id: mockPostId,
+        content: 'Post without comments',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
+      const mockPosts = [
+        { ...mockPostData, toObject: () => mockPostData },
+      ];
+
+      setupPaginationMock(mockPosts, 1, []);
+
+      const response = await request(app)
+        .get('/post')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.posts[0]).toHaveProperty('commentCount', 0);
     });
 
     it('should return 401 without authentication', async () => {
@@ -396,6 +465,111 @@ describe('Posts Endpoints - Unit Tests', () => {
       await request(app)
         .delete(`/post/${mockPostId}`)
         .expect(401);
+    });
+  });
+});
+
+describe('Comment Count Helper Functions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getCommentCountsForPosts', () => {
+    it('should return a map of post IDs to comment counts', async () => {
+      const postId1 = new Types.ObjectId();
+      const postId2 = new Types.ObjectId();
+      const postIds = [postId1, postId2];
+
+      (MockedComment.aggregate as jest.Mock) = jest.fn().mockResolvedValue([
+        { _id: postId1, count: 5 },
+        { _id: postId2, count: 3 },
+      ]);
+
+      const result = await getCommentCountsForPosts(postIds);
+
+      expect(MockedComment.aggregate).toHaveBeenCalledWith([
+        { $match: { postId: { $in: postIds } } },
+        { $group: { _id: '$postId', count: { $sum: 1 } } },
+      ]);
+      expect(result.get(postId1.toString())).toBe(5);
+      expect(result.get(postId2.toString())).toBe(3);
+    });
+
+    it('should return empty map when no comments exist', async () => {
+      const postIds = [new Types.ObjectId()];
+
+      (MockedComment.aggregate as jest.Mock) = jest.fn().mockResolvedValue([]);
+
+      const result = await getCommentCountsForPosts(postIds);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should handle empty postIds array', async () => {
+      (MockedComment.aggregate as jest.Mock) = jest.fn().mockResolvedValue([]);
+
+      const result = await getCommentCountsForPosts([]);
+
+      expect(result.size).toBe(0);
+    });
+  });
+
+  describe('addCommentCountsToPosts', () => {
+    it('should add comment counts to posts from map', () => {
+      const postId1 = new Types.ObjectId();
+      const postId2 = new Types.ObjectId();
+      const posts = [
+        { _id: postId1, content: 'Post 1' },
+        { _id: postId2, content: 'Post 2' },
+      ];
+      const commentCountMap = new Map([
+        [postId1.toString(), 5],
+        [postId2.toString(), 3],
+      ]);
+
+      const result = addCommentCountsToPosts(posts, commentCountMap);
+
+      expect(result[0].commentCount).toBe(5);
+      expect(result[1].commentCount).toBe(3);
+      expect(result[0].content).toBe('Post 1');
+      expect(result[1].content).toBe('Post 2');
+    });
+
+    it('should default to 0 for posts not in the map', () => {
+      const postId = new Types.ObjectId();
+      const posts = [{ _id: postId, content: 'Post without comments' }];
+      const commentCountMap = new Map<string, number>();
+
+      const result = addCommentCountsToPosts(posts, commentCountMap);
+
+      expect(result[0].commentCount).toBe(0);
+    });
+
+    it('should handle empty posts array', () => {
+      const commentCountMap = new Map<string, number>();
+
+      const result = addCommentCountsToPosts([], commentCountMap);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should preserve all original post properties', () => {
+      const postId = new Types.ObjectId();
+      const posts = [{
+        _id: postId,
+        content: 'Test',
+        senderId: 'user123',
+        createdAt: new Date(),
+      }];
+      const commentCountMap = new Map([[postId.toString(), 2]]);
+
+      const result = addCommentCountsToPosts(posts, commentCountMap);
+
+      expect(result[0]).toHaveProperty('_id', postId);
+      expect(result[0]).toHaveProperty('content', 'Test');
+      expect(result[0]).toHaveProperty('senderId', 'user123');
+      expect(result[0]).toHaveProperty('createdAt');
+      expect(result[0]).toHaveProperty('commentCount', 2);
     });
   });
 });
