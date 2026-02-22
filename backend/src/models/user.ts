@@ -5,6 +5,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   refreshToken?: string;
+  profilePicturePath?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,10 @@ const userSchema = new Schema<IUser>(
       select: false,
     },
     refreshToken: {
+      type: String,
+      default: undefined,
+    },
+    profilePicturePath: {
       type: String,
       default: undefined,
     },
