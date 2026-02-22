@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import User from '../models/user';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { AuthRequest } from '../middleware/auth';
 
 const getJWTSecret = (): string => {
   const secret = process.env.JWT_SECRET;
@@ -158,6 +159,19 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ message: 'Logout successful' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to logout' });
+  }
+};
+
+export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.user!.id).select('-password -refreshToken');
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    res.status(200).json({ user: sanitizeUser(user) });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get user' });
   }
 };
 
