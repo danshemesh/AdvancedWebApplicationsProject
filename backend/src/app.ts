@@ -16,6 +16,7 @@ import userRoutes from './routes/user';
 import authRoutes from './routes/auth';
 import postRoutes from './routes/post';
 import commentRoutes from './routes/comment';
+import aiRoutes from './routes/ai';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use('/user', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/post', postRoutes);
 app.use('/comment', commentRoutes);
+app.use('/ai', aiRoutes);
 
 if (process.env.NODE_ENV !== 'test') {
   const MONGO_URI = process.env.MONGODB_URI || '';
