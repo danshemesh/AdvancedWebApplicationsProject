@@ -2,7 +2,6 @@ import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useNavigate, useL
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
-import MyPosts from './pages/MyPosts';
 import PostDetail from './pages/PostDetail';
 import Register from './pages/Register';
 import UserDetails from './pages/UserDetails';
@@ -50,7 +49,6 @@ function Navbar() {
         {user ? (
           <>
             <NavLink to="/feed">Feed</NavLink>
-            <NavLink to="/my-posts">My Posts</NavLink>
             <Link to={`/user/${user._id}`}>My profile</Link>
             <button
               type="button"
@@ -75,9 +73,19 @@ function Navbar() {
 
 function ProtectedLayout() {
   const { user, checked } = useAuth();
-  if (!checked) return <div className="page"><p>Loading…</p></div>;
+  if (!checked) return (
+    <div className="page page-loader">
+      <div className="loader-spinner" aria-hidden="true" />
+      <p className="loading-text">Loading…</p>
+    </div>
+  );
   if (!user) return <Navigate to="/login" replace />;
   return <Outlet />;
+}
+
+function RedirectToMyProfile() {
+  const { user } = useAuth();
+  return <Navigate to={user ? `/user/${user._id}` : '/login'} replace />;
 }
 
 function AppRoutes() {
@@ -87,7 +95,7 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route element={<ProtectedLayout />}>
         <Route path="/feed" element={<Feed />} />
-        <Route path="/my-posts" element={<MyPosts />} />
+        <Route path="/my-posts" element={<RedirectToMyProfile />} />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/user/:id" element={<UserDetails />} />
       </Route>
