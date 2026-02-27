@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 
 interface Post {
   _id: string;
@@ -46,11 +47,14 @@ export default function Feed() {
     })();
   }, [fetchPosts]);
 
-  const handleLoadMore = async () => {
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return;
     setLoadingMore(true);
     await fetchPosts(page + 1, true);
     setLoadingMore(false);
-  };
+  }, [fetchPosts, page, loadingMore]);
+
+  const sentinelRef = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
   if (!user) return null;
 
@@ -72,15 +76,9 @@ export default function Feed() {
               </li>
             ))}
           </ul>
-          {hasMore && (
-            <button 
-              className="load-more-btn" 
-              onClick={handleLoadMore} 
-              disabled={loadingMore}
-            >
-              {loadingMore ? 'Loading…' : 'Load more'}
-            </button>
-          )}
+          <div ref={sentinelRef} className="scroll-sentinel">
+            {loadingMore && <p>Loading more…</p>}
+          </div>
         </>
       )}
     </div>
