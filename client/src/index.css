@@ -183,6 +183,17 @@ input {
   margin: 0;
   font-size: 0.9rem;
   color: #6b5344;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.comment-count {
+  color: #8b7a6b;
+}
+.load-more-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
 }
 
 /* User details */

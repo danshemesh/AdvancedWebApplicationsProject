@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -8,22 +8,49 @@ interface Post {
   content: string;
   senderId: { _id: string; username: string };
   createdAt: string;
+  commentCount: number;
+}
+
+interface PaginatedResponse {
+  posts: Post[];
+  total: number;
+  page: number;
+  totalPages: number;
+  hasMore: boolean;
 }
 
 export default function Feed() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+
+  const fetchPosts = useCallback(async (pageNum: number, append: boolean) => {
+    const { data, ok } = await apiRequest<PaginatedResponse>(`/post?page=${pageNum}`);
+    if (ok && data) {
+      setPosts(prev => append ? [...prev, ...data.posts] : data.posts);
+      setHasMore(data.hasMore);
+      setPage(pageNum);
+    } else {
+      setError('Failed to load posts');
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
-      const { data, ok } = await apiRequest<Post[]>('/post');
-      if (ok && Array.isArray(data)) setPosts(data);
-      else setError('Failed to load posts');
+      await fetchPosts(1, false);
       setLoading(false);
     })();
-  }, []);
+  }, [fetchPosts]);
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    await fetchPosts(page + 1, true);
+    setLoadingMore(false);
+  };
 
   if (!user) return null;
 
@@ -33,16 +60,28 @@ export default function Feed() {
       {loading && <p>Loading…</p>}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
-        <ul className="post-list">
-          {posts.map((post) => (
-            <li key={post._id} className="post-item">
-              <p className="post-content">{post.content}</p>
-              <p className="post-meta">
-                <Link to={`/user/${post.senderId._id}`}>{post.senderId.username}</Link>
-              </p>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="post-list">
+            {posts.map((post) => (
+              <li key={post._id} className="post-item">
+                <p className="post-content">{post.content}</p>
+                <p className="post-meta">
+                  <Link to={`/user/${post.senderId._id}`}>{post.senderId.username}</Link>
+                  <span className="comment-count">{post.commentCount} comments</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+          {hasMore && (
+            <button 
+              className="load-more-btn" 
+              onClick={handleLoadMore} 
+              disabled={loadingMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

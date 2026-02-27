@@ -74,7 +74,7 @@ router.post('/', authenticateToken, createPost);
  * @swagger
  * /post:
  *   get:
- *     summary: Get all posts
+ *     summary: Get all posts (paginated)
  *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
@@ -84,15 +84,51 @@ router.post('/', authenticateToken, createPost);
  *         schema:
  *           type: string
  *         description: Filter posts by sender ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *           minimum: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Number of posts per page
  *     responses:
  *       200:
- *         description: List of posts
+ *         description: Paginated list of posts with comment counts
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Post'
+ *               type: object
+ *               properties:
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Post'
+ *                       - type: object
+ *                         properties:
+ *                           commentCount:
+ *                             type: integer
+ *                             description: Number of comments on the post
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of posts
+ *                 page:
+ *                   type: integer
+ *                   description: Current page number
+ *                 totalPages:
+ *                   type: integer
+ *                   description: Total number of pages
+ *                 hasMore:
+ *                   type: boolean
+ *                   description: Whether more pages exist
  *       401:
  *         description: Unauthorized - token required
  */
