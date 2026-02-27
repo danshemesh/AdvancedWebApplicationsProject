@@ -26,7 +26,7 @@ interface PaginatedResponse {
   hasMore: boolean;
 }
 
-export default function Feed() {
+export default function MyPosts() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,8 @@ export default function Feed() {
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const fetchPosts = useCallback(async (pageNum: number, append: boolean) => {
-    const { data, ok } = await apiRequest<PaginatedResponse>(`/post?page=${pageNum}`);
+    if (!user) return;
+    const { data, ok } = await apiRequest<PaginatedResponse>(`/post?page=${pageNum}&sender=${user._id}`);
     if (ok && data) {
       setPosts(prev => append ? [...prev, ...data.posts] : data.posts);
       setHasMore(data.hasMore);
@@ -46,7 +47,7 @@ export default function Feed() {
     } else {
       setError('Failed to load posts');
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     (async () => {
@@ -82,15 +83,11 @@ export default function Feed() {
     }
   }
 
-  function isOwnPost(post: Post): boolean {
-    return user?._id === post.senderId._id;
-  }
-
   if (!user) return null;
 
   return (
     <div className="page feed-page">
-      <h1>Feed</h1>
+      <h1>My Posts</h1>
       <div className="create-post-section">
         <button
           type="button"
@@ -109,60 +106,62 @@ export default function Feed() {
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
         <>
-          <ul className="post-list">
-            {posts.map((post) => (
-              <li key={post._id} className="post-item">
-                {editingPostId === post._id ? (
-                  <PostForm
-                    postId={post._id}
-                    initialContent={post.content}
-                    initialImagePath={post.imagePath}
-                    onSuccess={handlePostUpdated}
-                    onCancel={() => setEditingPostId(null)}
-                  />
-                ) : (
-                  <>
-                    <div className="post-header">
-                      <Link to={`/user/${post.senderId._id}`} className="post-author-info">
-                        {post.senderId.profilePicturePath ? (
-                          <img
-                            src={getUploadsUrl(post.senderId.profilePicturePath)}
-                            alt={post.senderId.username}
-                            className="post-author-avatar"
-                          />
-                        ) : (
-                          <span className="post-author-avatar placeholder">👤</span>
-                        )}
-                        <span className="post-author-name">{post.senderId.username}</span>
-                      </Link>
-                      {isOwnPost(post) && (
+          {posts.length === 0 ? (
+            <p>You haven't created any posts yet.</p>
+          ) : (
+            <ul className="post-list">
+              {posts.map((post) => (
+                <li key={post._id} className="post-item">
+                  {editingPostId === post._id ? (
+                    <PostForm
+                      postId={post._id}
+                      initialContent={post.content}
+                      initialImagePath={post.imagePath}
+                      onSuccess={handlePostUpdated}
+                      onCancel={() => setEditingPostId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div className="post-header">
+                        <Link to={`/user/${post.senderId._id}`} className="post-author-info">
+                          {post.senderId.profilePicturePath ? (
+                            <img
+                              src={getUploadsUrl(post.senderId.profilePicturePath)}
+                              alt={post.senderId.username}
+                              className="post-author-avatar"
+                            />
+                          ) : (
+                            <span className="post-author-avatar placeholder">👤</span>
+                          )}
+                          <span className="post-author-name">{post.senderId.username}</span>
+                        </Link>
                         <PostMenu
                           onEdit={() => setEditingPostId(post._id)}
                           onDelete={() => handleDeletePost(post._id)}
                         />
-                      )}
-                    </div>
-                    <p className="post-content">{post.content}</p>
-                    {post.imagePath && (
-                      <div className="post-image">
-                        <img src={getUploadsUrl(post.imagePath)} alt="Post image" />
                       </div>
-                    )}
-                    <div className="post-interactions">
-                      <LikeButton
-                        postId={post._id}
-                        initialCount={post.likeCount}
-                        initialLiked={post.likedByCurrentUser}
-                      />
-                      <Link to={`/post/${post._id}`} className="comment-link">
-                        💬 {post.commentCount} comments
-                      </Link>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+                      <p className="post-content">{post.content}</p>
+                      {post.imagePath && (
+                        <div className="post-image">
+                          <img src={getUploadsUrl(post.imagePath)} alt="Post image" />
+                        </div>
+                      )}
+                      <div className="post-interactions">
+                        <LikeButton
+                          postId={post._id}
+                          initialCount={post.likeCount}
+                          initialLiked={post.likedByCurrentUser}
+                        />
+                        <Link to={`/post/${post._id}`} className="comment-link">
+                          💬 {post.commentCount} comments
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           <div ref={sentinelRef} className="scroll-sentinel">
             {loadingMore && <p>Loading more…</p>}
           </div>

@@ -85,7 +85,7 @@ export const getAllPosts = async (req: AuthRequest, res: Response): Promise<void
     
     const [posts, total] = await Promise.all([
       Post.find(filter)
-        .populate('senderId', 'username email')
+        .populate('senderId', 'username email profilePicturePath')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -125,7 +125,7 @@ export const getAllPosts = async (req: AuthRequest, res: Response): Promise<void
 
 export const getPostById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const post = await Post.findById(req.params.id).populate('senderId', 'username email');
+    const post = await Post.findById(req.params.id).populate('senderId', 'username email profilePicturePath');
 
     if (!post) {
       res.status(404).json({ error: 'Post not found' });
