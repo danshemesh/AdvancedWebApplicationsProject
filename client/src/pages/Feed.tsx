@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiRequest, getUploadsUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import LikeButton from '../components/LikeButton';
 import PostForm from '../components/PostForm';
 
 interface Post {
@@ -114,9 +115,18 @@ export default function Feed() {
                         <img src={getUploadsUrl(post.imagePath)} alt="Post image" />
                       </div>
                     )}
+                    <div className="post-interactions">
+                      <LikeButton
+                        postId={post._id}
+                        initialCount={post.likeCount}
+                        initialLiked={post.likedByCurrentUser}
+                      />
+                      <Link to={`/post/${post._id}`} className="comment-link">
+                        💬 {post.commentCount} comments
+                      </Link>
+                    </div>
                     <p className="post-meta">
                       <Link to={`/user/${post.senderId._id}`}>{post.senderId.username}</Link>
-                      <span className="comment-count">{post.commentCount} comments</span>
                     </p>
                     {isOwnPost(post) && (
                       <div className="post-actions">

@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
 import MyPosts from './pages/MyPosts';
+import PostDetail from './pages/PostDetail';
 import Register from './pages/Register';
 import UserDetails from './pages/UserDetails';
 
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route element={<ProtectedLayout />}>
         <Route path="/feed" element={<Feed />} />
         <Route path="/my-posts" element={<MyPosts />} />
+        <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/user/:id" element={<UserDetails />} />
       </Route>
       <Route path="/" element={<Navigate to="/feed" replace />} />
