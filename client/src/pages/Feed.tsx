@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { apiRequest } from '../api/client';
+import { apiRequest, getUploadsUrl } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import PostForm from '../components/PostForm';
 
 interface Post {
   _id: string;
@@ -10,6 +11,9 @@ interface Post {
   senderId: { _id: string; username: string };
   createdAt: string;
   commentCount: number;
+  likeCount: number;
+  likedByCurrentUser: boolean;
+  imagePath?: string;
 }
 
 interface PaginatedResponse {
@@ -28,6 +32,7 @@ export default function Feed() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async (pageNum: number, append: boolean) => {
     const { data, ok } = await apiRequest<PaginatedResponse>(`/post?page=${pageNum}`);
@@ -56,11 +61,36 @@ export default function Feed() {
 
   const sentinelRef = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
+  function handlePostCreated() {
+    fetchPosts(1, false);
+  }
+
+  function handlePostUpdated() {
+    setEditingPostId(null);
+    fetchPosts(1, false);
+  }
+
+  async function handleDeletePost(postId: string) {
+    if (!confirm('Are you sure you want to delete this post?')) return;
+    const { ok } = await apiRequest(`/post/${postId}`, { method: 'DELETE' });
+    if (ok) {
+      setPosts(prev => prev.filter(p => p._id !== postId));
+    }
+  }
+
+  function isOwnPost(post: Post): boolean {
+    return user?._id === post.senderId._id;
+  }
+
   if (!user) return null;
 
   return (
     <div className="page feed-page">
       <h1>Feed</h1>
+      <div className="create-post-section">
+        <h2>Create Post</h2>
+        <PostForm onSuccess={handlePostCreated} />
+      </div>
       {loading && <p>Loading…</p>}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
@@ -68,11 +98,34 @@ export default function Feed() {
           <ul className="post-list">
             {posts.map((post) => (
               <li key={post._id} className="post-item">
-                <p className="post-content">{post.content}</p>
-                <p className="post-meta">
-                  <Link to={`/user/${post.senderId._id}`}>{post.senderId.username}</Link>
-                  <span className="comment-count">{post.commentCount} comments</span>
-                </p>
+                {editingPostId === post._id ? (
+                  <PostForm
+                    postId={post._id}
+                    initialContent={post.content}
+                    initialImagePath={post.imagePath}
+                    onSuccess={handlePostUpdated}
+                    onCancel={() => setEditingPostId(null)}
+                  />
+                ) : (
+                  <>
+                    <p className="post-content">{post.content}</p>
+                    {post.imagePath && (
+                      <div className="post-image">
+                        <img src={getUploadsUrl(post.imagePath)} alt="Post image" />
+                      </div>
+                    )}
+                    <p className="post-meta">
+                      <Link to={`/user/${post.senderId._id}`}>{post.senderId.username}</Link>
+                      <span className="comment-count">{post.commentCount} comments</span>
+                    </p>
+                    {isOwnPost(post) && (
+                      <div className="post-actions">
+                        <button onClick={() => setEditingPostId(post._id)}>Edit</button>
+                        <button onClick={() => handleDeletePost(post._id)}>Delete</button>
+                      </div>
+                    )}
+                  </>
+                )}
               </li>
             ))}
           </ul>
