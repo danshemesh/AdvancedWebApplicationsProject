@@ -95,7 +95,14 @@ export default function SearchBox({ onSearchResults, isSearchMode }: SearchBoxPr
         disabled={loading || !query.trim()}
         className="search-btn btn-primary"
       >
-        {loading ? 'Searching…' : 'Search'}
+        {loading ? (
+          <>
+            <span className="spinner spinner-sm" aria-hidden="true"></span>
+            <span>Searching</span>
+          </>
+        ) : (
+          'Search'
+        )}
       </button>
       {isSearchMode && (
         <button

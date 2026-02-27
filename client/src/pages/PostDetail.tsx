@@ -46,7 +46,14 @@ export default function PostDetail() {
     });
   }
 
-  if (loading) return <div className="page"><p>Loading…</p></div>;
+  if (loading) return (
+    <div className="page">
+      <div className="loading-text">
+        <span className="spinner" aria-hidden="true"></span>
+        <span>Loading post</span>
+      </div>
+    </div>
+  );
   if (error) return <div className="page"><p className="error">{error}</p></div>;
   if (!post) return null;
 

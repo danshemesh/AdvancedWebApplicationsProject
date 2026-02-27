@@ -60,7 +60,12 @@ export default function CommentList({ postId }: CommentListProps) {
     });
   }
 
-  if (loading) return <p>Loading comments…</p>;
+  if (loading) return (
+    <div className="loading-text">
+      <span className="spinner spinner-sm" aria-hidden="true"></span>
+      <span>Loading comments</span>
+    </div>
+  );
   if (error) return <p className="error">{error}</p>;
 
   return (

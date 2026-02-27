@@ -135,70 +135,96 @@ export default function Feed() {
           )}
         </div>
       )}
-      {loading && <p>Loading…</p>}
+      {loading && (
+        <div className="loading-text">
+          <span className="spinner" aria-hidden="true"></span>
+          <span>Loading posts</span>
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
         <>
-          <ul className="post-list">
-            {posts.map((post) => (
-              <li key={post._id} className="post-item">
-                {editingPostId === post._id ? (
-                  <PostForm
-                    postId={post._id}
-                    initialContent={post.content}
-                    initialImagePath={post.imagePath}
-                    onSuccess={handlePostUpdated}
-                    onCancel={() => setEditingPostId(null)}
-                  />
-                ) : (
-                  <>
-                    <div className="post-header">
-                      <Link to={`/user/${post.senderId._id}`} className="post-author-info">
-                        {post.senderId.profilePicturePath ? (
-                          <img
-                            src={getUploadsUrl(post.senderId.profilePicturePath)}
-                            alt={post.senderId.username}
-                            className="post-author-avatar"
+          {posts.length === 0 ? (
+            <div className="no-results">
+              <div className="no-results-icon">{isSearchMode ? '🔍' : '📝'}</div>
+              <h3 className="no-results-title">
+                {isSearchMode ? 'No matching posts found' : 'No posts yet'}
+              </h3>
+              <p className="no-results-description">
+                {isSearchMode
+                  ? 'Try different keywords or go back to see all posts'
+                  : 'Be the first to create a post!'}
+              </p>
+            </div>
+          ) : (
+            <ul className="post-list">
+              {posts.map((post) => (
+                <li key={post._id} className="post-item fade-in">
+                  {editingPostId === post._id ? (
+                    <PostForm
+                      postId={post._id}
+                      initialContent={post.content}
+                      initialImagePath={post.imagePath}
+                      onSuccess={handlePostUpdated}
+                      onCancel={() => setEditingPostId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div className="post-header">
+                        <Link to={`/user/${post.senderId._id}`} className="post-author-info">
+                          {post.senderId.profilePicturePath ? (
+                            <img
+                              src={getUploadsUrl(post.senderId.profilePicturePath)}
+                              alt={post.senderId.username}
+                              className="post-author-avatar"
+                            />
+                          ) : (
+                            <span className="post-author-avatar placeholder">👤</span>
+                          )}
+                          <span className="post-author-name">{post.senderId.username}</span>
+                        </Link>
+                        {isOwnPost(post) && (
+                          <PostMenu
+                            onEdit={() => setEditingPostId(post._id)}
+                            onDelete={() => handleDeletePost(post._id)}
                           />
-                        ) : (
-                          <span className="post-author-avatar placeholder">👤</span>
                         )}
-                        <span className="post-author-name">{post.senderId.username}</span>
-                      </Link>
-                      {isOwnPost(post) && (
-                        <PostMenu
-                          onEdit={() => setEditingPostId(post._id)}
-                          onDelete={() => handleDeletePost(post._id)}
-                        />
-                      )}
-                    </div>
-                    {post.searchReason && (
-                      <p className="search-reason">Match: {post.searchReason}</p>
-                    )}
-                    <p className="post-content">{post.content}</p>
-                    {post.imagePath && (
-                      <div className="post-image">
-                        <img src={getUploadsUrl(post.imagePath)} alt="Post image" />
                       </div>
-                    )}
-                    <div className="post-interactions">
-                      <LikeButton
-                        postId={post._id}
-                        initialCount={post.likeCount}
-                        initialLiked={post.likedByCurrentUser}
-                      />
-                      <Link to={`/post/${post._id}`} className="comment-link">
-                        💬 {post.commentCount} comments
-                      </Link>
-                    </div>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-          <div ref={sentinelRef} className="scroll-sentinel">
-            {loadingMore && <p>Loading more…</p>}
-          </div>
+                      {post.searchReason && (
+                        <p className="search-reason">Match: {post.searchReason}</p>
+                      )}
+                      <p className="post-content">{post.content}</p>
+                      {post.imagePath && (
+                        <div className="post-image">
+                          <img src={getUploadsUrl(post.imagePath)} alt="Post image" />
+                        </div>
+                      )}
+                      <div className="post-interactions">
+                        <LikeButton
+                          postId={post._id}
+                          initialCount={post.likeCount}
+                          initialLiked={post.likedByCurrentUser}
+                        />
+                        <Link to={`/post/${post._id}`} className="comment-link">
+                          💬 {post.commentCount} comments
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!isSearchMode && (
+            <div ref={sentinelRef} className="scroll-sentinel">
+              {loadingMore && (
+                <>
+                  <span className="spinner spinner-sm" aria-hidden="true"></span>
+                  <span>Loading more</span>
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
