@@ -5,7 +5,7 @@ import { AuthRequest } from './auth';
 
 const AVATARS_DIR = path.join(process.cwd(), 'uploads', 'avatars');
 const POSTS_DIR = path.join(process.cwd(), 'uploads', 'posts');
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
 try {

@@ -109,6 +109,15 @@ export default function Feed() {
 
   if (!user) return null;
 
+  if (loading) {
+    return (
+      <div className="page page-loader">
+        <div className="loader-spinner" aria-hidden="true" />
+        <p className="loading-text">Loading feed…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="page feed-page">
       <h1>Feed</h1>
@@ -135,14 +144,8 @@ export default function Feed() {
           )}
         </div>
       )}
-      {loading && (
-        <div className="loading-text">
-          <span className="spinner" aria-hidden="true"></span>
-          <span>Loading posts</span>
-        </div>
-      )}
       {error && <p className="error">{error}</p>}
-      {!loading && !error && (
+      {!error && (
         <>
           {posts.length === 0 ? (
             <div className="no-results">
@@ -159,7 +162,7 @@ export default function Feed() {
           ) : (
             <ul className="post-list">
               {posts.map((post) => (
-                <li key={post._id} className="post-item fade-in">
+                <li key={post._id} className="post-item">
                   {editingPostId === post._id ? (
                     <PostForm
                       postId={post._id}
@@ -172,15 +175,18 @@ export default function Feed() {
                     <>
                       <div className="post-header">
                         <Link to={`/user/${post.senderId._id}`} className="post-author-info">
-                          {post.senderId.profilePicturePath ? (
-                            <img
-                              src={getUploadsUrl(post.senderId.profilePicturePath)}
-                              alt={post.senderId.username}
-                              className="post-author-avatar"
-                            />
-                          ) : (
-                            <span className="post-author-avatar placeholder">👤</span>
-                          )}
+                          {(() => {
+                            const avatarPath = (post.senderId._id === user._id ? user.profilePicturePath : null) ?? post.senderId.profilePicturePath;
+                            return avatarPath ? (
+                              <img
+                                src={getUploadsUrl(avatarPath)}
+                                alt={post.senderId.username}
+                                className="post-author-avatar"
+                              />
+                            ) : (
+                              <span className="post-author-avatar placeholder">👤</span>
+                            );
+                          })()}
                           <span className="post-author-name">{post.senderId.username}</span>
                         </Link>
                         {isOwnPost(post) && (

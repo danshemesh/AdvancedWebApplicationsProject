@@ -103,7 +103,7 @@ router.post('/', authenticateToken, createUser);
  * /user/{id}/avatar:
  *   put:
  *     summary: Upload profile picture (avatar)
- *     description: Only the authenticated user can upload their own avatar. Accepts a single image file (JPEG, PNG, WebP, max 2MB).
+ *     description: Only the authenticated user can upload their own avatar. Accepts a single image file (JPEG, PNG, WebP, max 5MB).
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -126,7 +126,7 @@ router.post('/', authenticateToken, createUser);
  *               avatar:
  *                 type: string
  *                 format: binary
- *                 description: Image file (JPEG, PNG or WebP, max 2MB)
+ *                 description: Image file (JPEG, PNG or WebP, max 5MB)
  *     responses:
  *       200:
  *         description: Avatar updated successfully

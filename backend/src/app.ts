@@ -50,8 +50,13 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-app.use((err: Error & { code?: string }, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
+app.use((err: Error & { code?: string; name?: string }, req: Request, res: Response, _next: NextFunction) => {
+  console.error(err.name, err.message);
+  
+  if (err.name === 'MulterError' && err.code === 'LIMIT_FILE_SIZE') {
+    res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+    return;
+  }
   if (err.code === 'LIMIT_FILE_SIZE' || err.message?.includes('images are allowed')) {
     res.status(400).json({ error: err.message || 'Invalid file' });
     return;

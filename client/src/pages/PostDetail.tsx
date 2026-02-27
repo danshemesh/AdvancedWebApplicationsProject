@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiRequest, getUploadsUrl } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import LikeButton from '../components/LikeButton';
 import CommentList from '../components/CommentList';
 
@@ -17,6 +18,7 @@ interface Post {
 
 export default function PostDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,11 +49,9 @@ export default function PostDetail() {
   }
 
   if (loading) return (
-    <div className="page">
-      <div className="loading-text">
-        <span className="spinner" aria-hidden="true"></span>
-        <span>Loading post</span>
-      </div>
+    <div className="page page-loader">
+      <div className="loader-spinner" aria-hidden="true" />
+      <p className="loading-text">Loading post…</p>
     </div>
   );
   if (error) return <div className="page"><p className="error">{error}</p></div>;
@@ -63,15 +63,18 @@ export default function PostDetail() {
       <div className="post-detail">
         <div className="post-detail-header">
           <Link to={`/user/${post.senderId._id}`} className="post-author-info">
-            {post.senderId.profilePicturePath ? (
-              <img
-                src={getUploadsUrl(post.senderId.profilePicturePath)}
-                alt={post.senderId.username}
-                className="post-author-avatar"
-              />
-            ) : (
-              <span className="post-author-avatar placeholder">👤</span>
-            )}
+            {(() => {
+              const avatarPath = (post.senderId._id === user?._id ? user.profilePicturePath : null) ?? post.senderId.profilePicturePath;
+              return avatarPath ? (
+                <img
+                  src={getUploadsUrl(avatarPath)}
+                  alt={post.senderId.username}
+                  className="post-author-avatar"
+                />
+              ) : (
+                <span className="post-author-avatar placeholder">👤</span>
+              );
+            })()}
             <span className="post-author-name">{post.senderId.username}</span>
           </Link>
           <span className="post-date">{formatDate(post.createdAt)}</span>
