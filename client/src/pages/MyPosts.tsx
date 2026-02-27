@@ -124,15 +124,18 @@ export default function MyPosts() {
                     <>
                       <div className="post-header">
                         <Link to={`/user/${post.senderId._id}`} className="post-author-info">
-                          {post.senderId.profilePicturePath ? (
-                            <img
-                              src={getUploadsUrl(post.senderId.profilePicturePath)}
-                              alt={post.senderId.username}
-                              className="post-author-avatar"
-                            />
-                          ) : (
-                            <span className="post-author-avatar placeholder">👤</span>
-                          )}
+                          {(() => {
+                            const avatarPath = (post.senderId._id === user._id ? user.profilePicturePath : null) ?? post.senderId.profilePicturePath;
+                            return avatarPath ? (
+                              <img
+                                src={getUploadsUrl(avatarPath)}
+                                alt={post.senderId.username}
+                                className="post-author-avatar"
+                              />
+                            ) : (
+                              <span className="post-author-avatar placeholder">👤</span>
+                            );
+                          })()}
                           <span className="post-author-name">{post.senderId.username}</span>
                         </Link>
                         <PostMenu

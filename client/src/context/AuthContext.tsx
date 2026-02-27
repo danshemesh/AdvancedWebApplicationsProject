@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -53,34 +54,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checked: false,
   });
 
+  const refreshPromiseRef = useRef<Promise<void> | null>(null);
+
   const refreshAuth = useCallback(async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) {
       setState((s) => ({ ...s, user: null, checked: true }));
       return;
     }
-    const { data, ok } = await apiRequest<{ accessToken: string; refreshToken: string }>(
-      '/auth/refresh',
-      {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken }),
-      }
-    );
-    if (!ok || !data) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      saveStoredUser(null);
-      setState((s) => ({ ...s, user: null, checked: true }));
+    if (refreshPromiseRef.current) {
+      await refreshPromiseRef.current;
       return;
     }
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    setState((s) => ({ ...s, user: loadStoredUser(), checked: true }));
+    const promise = (async () => {
+      const { data, ok } = await apiRequest<{ accessToken: string; refreshToken: string }>(
+        '/auth/refresh',
+        {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken }),
+        }
+      );
+      if (!ok || !data) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        saveStoredUser(null);
+        setState((s) => ({ ...s, user: null, checked: true }));
+        return;
+      }
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      const { data: meData } = await apiRequest<{ user: User }>('/auth/me');
+      const user = meData?.user ?? loadStoredUser();
+      if (user) saveStoredUser(user);
+      setState((s) => ({ ...s, user, checked: true }));
+    })().finally(() => {
+      refreshPromiseRef.current = null;
+    });
+    refreshPromiseRef.current = promise;
+    await promise;
   }, []);
 
   useEffect(() => {
     refreshAuth();
   }, [refreshAuth]);
+
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (e.key === 'accessToken' || e.key === 'refreshToken' || e.key === USER_KEY) {
+        const refreshToken = localStorage.getItem('refreshToken');
+        const user = loadStoredUser();
+        if (!refreshToken || !user) {
+          setState((s) => ({ ...s, user: null, checked: true }));
+        } else {
+          setState((s) => ({ ...s, user }));
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const login = useCallback(
     async (email: string, password: string) => {
