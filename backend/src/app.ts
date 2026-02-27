@@ -16,6 +16,7 @@ import userRoutes from './routes/user';
 import authRoutes from './routes/auth';
 import postRoutes from './routes/post';
 import commentRoutes from './routes/comment';
+import aiRoutes from './routes/ai';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use('/user', userRoutes);
 app.use('/auth', authRoutes);
 app.use('/post', postRoutes);
 app.use('/comment', commentRoutes);
+app.use('/ai', aiRoutes);
 
 if (process.env.NODE_ENV !== 'test') {
   const MONGO_URI = process.env.MONGODB_URI || '';
@@ -48,8 +50,13 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-app.use((err: Error & { code?: string }, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
+app.use((err: Error & { code?: string; name?: string }, req: Request, res: Response, _next: NextFunction) => {
+  console.error(err.name, err.message);
+  
+  if (err.name === 'MulterError' && err.code === 'LIMIT_FILE_SIZE') {
+    res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+    return;
+  }
   if (err.code === 'LIMIT_FILE_SIZE' || err.message?.includes('images are allowed')) {
     res.status(400).json({ error: err.message || 'Invalid file' });
     return;

@@ -184,6 +184,9 @@ export default function UserDetails() {
     if (saved) {
       showSuccess('Profile saved successfully!');
       setIsEditingUsername(false);
+      if (usernameChanged) {
+        fetchPosts(1, false);
+      }
     }
   }
 
