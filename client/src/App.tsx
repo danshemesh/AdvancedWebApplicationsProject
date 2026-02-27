@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useNavigate } fro
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
+import MyPosts from './pages/MyPosts';
 import Register from './pages/Register';
 import UserDetails from './pages/UserDetails';
 
@@ -18,6 +19,7 @@ function Navbar() {
         {user ? (
           <>
             <Link to="/feed">Feed</Link>
+            <Link to="/my-posts">My Posts</Link>
             <Link to={`/user/${user._id}`}>My profile</Link>
             <button
               type="button"
@@ -54,6 +56,7 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route element={<ProtectedLayout />}>
         <Route path="/feed" element={<Feed />} />
+        <Route path="/my-posts" element={<MyPosts />} />
         <Route path="/user/:id" element={<UserDetails />} />
       </Route>
       <Route path="/" element={<Navigate to="/feed" replace />} />
