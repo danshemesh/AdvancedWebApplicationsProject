@@ -7,7 +7,7 @@ import CommentList from '../components/CommentList';
 interface Post {
   _id: string;
   content: string;
-  senderId: { _id: string; username: string };
+  senderId: { _id: string; username: string; profilePicturePath?: string };
   createdAt: string;
   commentCount: number;
   likeCount: number;
@@ -55,8 +55,17 @@ export default function PostDetail() {
       <Link to="/feed" className="back-link">← Back to Feed</Link>
       <div className="post-detail">
         <div className="post-detail-header">
-          <Link to={`/user/${post.senderId._id}`} className="post-author">
-            {post.senderId.username}
+          <Link to={`/user/${post.senderId._id}`} className="post-author-info">
+            {post.senderId.profilePicturePath ? (
+              <img
+                src={getUploadsUrl(post.senderId.profilePicturePath)}
+                alt={post.senderId.username}
+                className="post-author-avatar"
+              />
+            ) : (
+              <span className="post-author-avatar placeholder">👤</span>
+            )}
+            <span className="post-author-name">{post.senderId.username}</span>
           </Link>
           <span className="post-date">{formatDate(post.createdAt)}</span>
         </div>

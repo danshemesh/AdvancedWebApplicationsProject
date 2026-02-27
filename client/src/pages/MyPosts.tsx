@@ -5,11 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import LikeButton from '../components/LikeButton';
 import PostForm from '../components/PostForm';
+import PostMenu from '../components/PostMenu';
 
 interface Post {
   _id: string;
   content: string;
-  senderId: { _id: string; username: string };
+  senderId: { _id: string; username: string; profilePicturePath?: string };
   createdAt: string;
   commentCount: number;
   likeCount: number;
@@ -34,6 +35,7 @@ export default function MyPosts() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const fetchPosts = useCallback(async (pageNum: number, append: boolean) => {
     if (!user) return;
@@ -64,6 +66,7 @@ export default function MyPosts() {
   const sentinelRef = useInfiniteScroll(loadMore, hasMore, loadingMore);
 
   function handlePostCreated() {
+    setShowCreateForm(false);
     fetchPosts(1, false);
   }
 
@@ -86,8 +89,18 @@ export default function MyPosts() {
     <div className="page feed-page">
       <h1>My Posts</h1>
       <div className="create-post-section">
-        <h2>Create Post</h2>
-        <PostForm onSuccess={handlePostCreated} />
+        <button
+          type="button"
+          className="create-post-toggle"
+          onClick={() => setShowCreateForm(!showCreateForm)}
+        >
+          {showCreateForm ? '✕ Cancel' : '+ Create Post'}
+        </button>
+        {showCreateForm && (
+          <div className="create-post-form-wrapper">
+            <PostForm onSuccess={handlePostCreated} onCancel={() => setShowCreateForm(false)} />
+          </div>
+        )}
       </div>
       {loading && <p>Loading…</p>}
       {error && <p className="error">{error}</p>}
@@ -109,6 +122,24 @@ export default function MyPosts() {
                     />
                   ) : (
                     <>
+                      <div className="post-header">
+                        <Link to={`/user/${post.senderId._id}`} className="post-author-info">
+                          {post.senderId.profilePicturePath ? (
+                            <img
+                              src={getUploadsUrl(post.senderId.profilePicturePath)}
+                              alt={post.senderId.username}
+                              className="post-author-avatar"
+                            />
+                          ) : (
+                            <span className="post-author-avatar placeholder">👤</span>
+                          )}
+                          <span className="post-author-name">{post.senderId.username}</span>
+                        </Link>
+                        <PostMenu
+                          onEdit={() => setEditingPostId(post._id)}
+                          onDelete={() => handleDeletePost(post._id)}
+                        />
+                      </div>
                       <p className="post-content">{post.content}</p>
                       {post.imagePath && (
                         <div className="post-image">
@@ -124,13 +155,6 @@ export default function MyPosts() {
                         <Link to={`/post/${post._id}`} className="comment-link">
                           💬 {post.commentCount} comments
                         </Link>
-                      </div>
-                      <p className="post-meta">
-                        <Link to={`/user/${post.senderId._id}`}>{post.senderId.username}</Link>
-                      </p>
-                      <div className="post-actions">
-                        <button onClick={() => setEditingPostId(post._id)}>Edit</button>
-                        <button onClick={() => handleDeletePost(post._id)}>Delete</button>
                       </div>
                     </>
                   )}
