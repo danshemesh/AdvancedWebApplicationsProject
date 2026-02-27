@@ -6,6 +6,7 @@ import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import LikeButton from '../components/LikeButton';
 import PostForm from '../components/PostForm';
 import PostMenu from '../components/PostMenu';
+import SearchBox from '../components/SearchBox';
 
 interface Post {
   _id: string;
@@ -16,6 +17,7 @@ interface Post {
   likeCount: number;
   likedByCurrentUser: boolean;
   imagePath?: string;
+  searchReason?: string;
 }
 
 interface PaginatedResponse {
@@ -36,6 +38,8 @@ export default function Feed() {
   const [hasMore, setHasMore] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   const fetchPosts = useCallback(async (pageNum: number, append: boolean) => {
     const { data, ok } = await apiRequest<PaginatedResponse>(`/post?page=${pageNum}`);
@@ -62,16 +66,33 @@ export default function Feed() {
     setLoadingMore(false);
   }, [fetchPosts, page, loadingMore]);
 
-  const sentinelRef = useInfiniteScroll(loadMore, hasMore, loadingMore);
+  const sentinelRef = useInfiniteScroll(loadMore, hasMore && !isSearchMode, loadingMore);
 
   function handlePostCreated() {
     setShowCreateForm(false);
-    fetchPosts(1, false);
+    if (!isSearchMode) {
+      fetchPosts(1, false);
+    }
   }
 
   function handlePostUpdated() {
     setEditingPostId(null);
-    fetchPosts(1, false);
+    if (!isSearchMode) {
+      fetchPosts(1, false);
+    }
+  }
+
+  function handleSearchResults(results: Post[] | null, query: string) {
+    if (results === null) {
+      setIsSearchMode(false);
+      setSearchQuery('');
+      fetchPosts(1, false);
+    } else {
+      setIsSearchMode(true);
+      setSearchQuery(query);
+      setPosts(results);
+      setHasMore(false);
+    }
   }
 
   async function handleDeletePost(postId: string) {
@@ -91,20 +112,29 @@ export default function Feed() {
   return (
     <div className="page feed-page">
       <h1>Feed</h1>
-      <div className="create-post-section">
-        <button
-          type="button"
-          className="create-post-toggle"
-          onClick={() => setShowCreateForm(!showCreateForm)}
-        >
-          {showCreateForm ? '✕ Cancel' : '+ Create Post'}
-        </button>
-        {showCreateForm && (
-          <div className="create-post-form-wrapper">
-            <PostForm onSuccess={handlePostCreated} onCancel={() => setShowCreateForm(false)} />
-          </div>
-        )}
-      </div>
+      <SearchBox onSearchResults={handleSearchResults} isSearchMode={isSearchMode} />
+      {isSearchMode ? (
+        <div className="search-results-info">
+          <p>
+            Showing {posts.length} result{posts.length !== 1 ? 's' : ''} for "{searchQuery}"
+          </p>
+        </div>
+      ) : (
+        <div className="create-post-section">
+          <button
+            type="button"
+            className="create-post-toggle"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? '✕ Cancel' : '+ Create Post'}
+          </button>
+          {showCreateForm && (
+            <div className="create-post-form-wrapper">
+              <PostForm onSuccess={handlePostCreated} onCancel={() => setShowCreateForm(false)} />
+            </div>
+          )}
+        </div>
+      )}
       {loading && <p>Loading…</p>}
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
@@ -142,6 +172,9 @@ export default function Feed() {
                         />
                       )}
                     </div>
+                    {post.searchReason && (
+                      <p className="search-reason">Match: {post.searchReason}</p>
+                    )}
                     <p className="post-content">{post.content}</p>
                     {post.imagePath && (
                       <div className="post-image">
