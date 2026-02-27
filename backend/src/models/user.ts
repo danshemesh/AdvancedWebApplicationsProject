@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   refreshToken?: string;
   profilePicturePath?: string;
+  googleId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +42,11 @@ const userSchema = new Schema<IUser>(
     profilePicturePath: {
       type: String,
       default: undefined,
+    },
+    googleId: {
+      type: String,
+      default: undefined,
+      sparse: true,
     },
   },
   {

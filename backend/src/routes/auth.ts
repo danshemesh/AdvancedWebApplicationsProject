@@ -1,10 +1,14 @@
 import express from 'express';
+import passport from 'passport';
 import {
   register,
   login,
   logout,
   refreshToken,
+  getMe,
 } from '../controllers/auth';
+import { googleAuth, googleCallback } from '../controllers/authGoogle';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -154,6 +158,61 @@ router.post('/logout', logout);
  *         description: Invalid or expired refresh token
  */
 router.post('/refresh', refreshToken);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user from token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/me', authenticateToken, getMe);
+
+/**
+ * @swagger
+ * /auth/google:
+ *   get:
+ *     summary: Start Google OAuth login
+ *     tags: [Authentication]
+ *     description: Redirects the user to Google consent screen. After approval, user is redirected to /auth/google/callback, then to the frontend with accessToken and refreshToken in the query string.
+ *     responses:
+ *       302:
+ *         description: Redirect to Google
+ */
+router.get('/google', googleAuth);
+
+/**
+ * @swagger
+ * /auth/google/callback:
+ *   get:
+ *     summary: Google OAuth callback
+ *     tags: [Authentication]
+ *     description: Handled by Passport. On success, redirects to FRONTEND_URL with query params accessToken and refreshToken (and user). On error, redirects with error param.
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         schema:
+ *           type: string
+ *         description: Authorization code from Google
+ *     responses:
+ *       302:
+ *         description: Redirect to frontend with tokens or error
+ */
+router.get('/google/callback', googleCallback);
 
 export default router;
 

@@ -1,16 +1,21 @@
-import cors from 'cors';
+/// <reference path="./types/express.d.ts" />
+import path from 'path';
 import dotenv from 'dotenv';
+
+// Must be called before any import that reads process.env (e.g. passport config)
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+
+import cors from 'cors';
 import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import { swaggerOptions } from './config/swagger';
+import './config/passport';
 import userRoutes from './routes/user';
 import authRoutes from './routes/auth';
 import postRoutes from './routes/post';
 import commentRoutes from './routes/comment';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,9 +54,9 @@ app.use((err: Error & { code?: string }, req: Request, res: Response, next: Next
     res.status(400).json({ error: err.message || 'Invalid file' });
     return;
   }
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });
 

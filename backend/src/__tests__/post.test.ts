@@ -4,8 +4,9 @@ import app from '../app';
 import Post from '../models/post';
 import User from '../models/user';
 import Comment from '../models/comment';
+import Like from '../models/like';
 import jwt from 'jsonwebtoken';
-import { getCommentCountsForPosts, addCommentCountsToPosts } from '../controllers/post';
+import { getCommentCountsForPosts, addCommentCountsToPosts, getLikeCountsForPosts, getLikedByUserForPosts } from '../controllers/post';
 
 jest.mock('../models/post');
 const MockedPost = Post as jest.Mocked<typeof Post>;
@@ -15,6 +16,9 @@ const MockedUser = User as jest.Mocked<typeof User>;
 
 jest.mock('../models/comment');
 const MockedComment = Comment as jest.Mocked<typeof Comment>;
+
+jest.mock('../models/like');
+const MockedLike = Like as jest.Mocked<typeof Like>;
 
 jest.mock('jsonwebtoken');
 const MockedJwt = jwt as jest.Mocked<typeof jwt>;
@@ -103,7 +107,13 @@ describe('Posts Endpoints - Unit Tests', () => {
   });
 
   describe('GET /post', () => {
-    const setupPaginationMock = (mockPosts: any[], total: number, commentCounts: { _id: string; count: number }[] = []) => {
+    const setupPaginationMock = (
+      mockPosts: any[],
+      total: number,
+      commentCounts: { _id: string; count: number }[] = [],
+      likeCounts: { _id: string; count: number }[] = [],
+      likedPostIds: string[] = []
+    ) => {
       (MockedPost.find as jest.Mock) = jest.fn().mockReturnValue({
         populate: jest.fn().mockReturnValue({
           sort: jest.fn().mockReturnValue({
@@ -115,6 +125,12 @@ describe('Posts Endpoints - Unit Tests', () => {
       });
       (MockedPost.countDocuments as jest.Mock) = jest.fn().mockResolvedValue(total);
       (MockedComment.aggregate as jest.Mock) = jest.fn().mockResolvedValue(commentCounts);
+      (MockedLike.aggregate as jest.Mock) = jest.fn().mockResolvedValue(likeCounts);
+      (MockedLike.find as jest.Mock) = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(likedPostIds.map(id => ({ postId: id }))),
+        }),
+      });
     };
 
     it('should get posts with default pagination (page 1, limit 10)', async () => {
@@ -290,6 +306,40 @@ describe('Posts Endpoints - Unit Tests', () => {
       expect(response.body.posts[0]).toHaveProperty('commentCount', 0);
     });
 
+    it('should include likeCount and likedByCurrentUser in each post', async () => {
+      const postId1 = '507f1f77bcf86cd799439022';
+      const postId2 = '507f1f77bcf86cd799439033';
+      const mockPostData1 = {
+        _id: postId1,
+        content: 'Post 1',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
+      const mockPostData2 = {
+        _id: postId2,
+        content: 'Post 2',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+      };
+      const mockPosts = [
+        { ...mockPostData1, toObject: () => mockPostData1 },
+        { ...mockPostData2, toObject: () => mockPostData2 },
+      ];
+      const likeCounts = [
+        { _id: postId1, count: 2 },
+        { _id: postId2, count: 0 },
+      ];
+      setupPaginationMock(mockPosts, 2, [], likeCounts, [postId1]);
+
+      const response = await request(app)
+        .get('/post')
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.posts[0].likeCount).toBe(2);
+      expect(response.body.posts[0].likedByCurrentUser).toBe(true);
+      expect(response.body.posts[1].likeCount).toBe(0);
+      expect(response.body.posts[1].likedByCurrentUser).toBe(false);
+    });
+
     it('should return 401 without authentication', async () => {
       await request(app)
         .get('/post')
@@ -297,16 +347,102 @@ describe('Posts Endpoints - Unit Tests', () => {
     });
   });
 
+  describe('POST /post/:id/like', () => {
+    it('should like a post and return 201', async () => {
+      const mockPost = { _id: mockPostId };
+      (MockedPost.findById as jest.Mock) = jest.fn().mockResolvedValue(mockPost);
+      const mockLike = { save: jest.fn().mockResolvedValue(undefined) };
+      (MockedLike as any).mockImplementation(() => mockLike);
+
+      const response = await request(app)
+        .post(`/post/${mockPostId}/like`)
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(201);
+
+      expect(response.body.liked).toBe(true);
+      expect(mockLike.save).toHaveBeenCalled();
+    });
+
+    it('should return 200 when post already liked (duplicate)', async () => {
+      const mockPost = { _id: mockPostId };
+      (MockedPost.findById as jest.Mock) = jest.fn().mockResolvedValue(mockPost);
+      const mockLike = { save: jest.fn().mockRejectedValue({ code: 11000 }) };
+      (MockedLike as any).mockImplementation(() => mockLike);
+
+      const response = await request(app)
+        .post(`/post/${mockPostId}/like`)
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.liked).toBe(true);
+    });
+
+    it('should return 404 for non-existent post', async () => {
+      (MockedPost.findById as jest.Mock) = jest.fn().mockResolvedValue(null);
+
+      const response = await request(app)
+        .post(`/post/${mockPostId}/like`)
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(404);
+
+      expect(response.body.error).toBe('Post not found');
+    });
+
+    it('should return 401 without authentication', async () => {
+      await request(app)
+        .post(`/post/${mockPostId}/like`)
+        .expect(401);
+    });
+  });
+
+  describe('DELETE /post/:id/like', () => {
+    it('should remove like and return 200', async () => {
+      const mockPost = { _id: mockPostId };
+      (MockedPost.findById as jest.Mock) = jest.fn().mockResolvedValue(mockPost);
+      (MockedLike.deleteOne as jest.Mock) = jest.fn().mockResolvedValue({ deletedCount: 1 });
+
+      const response = await request(app)
+        .delete(`/post/${mockPostId}/like`)
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.liked).toBe(false);
+      expect(MockedLike.deleteOne).toHaveBeenCalledWith({ postId: mockPostId, userId: mockUserId });
+    });
+
+    it('should return 404 for non-existent post', async () => {
+      (MockedPost.findById as jest.Mock) = jest.fn().mockResolvedValue(null);
+
+      const response = await request(app)
+        .delete(`/post/${mockPostId}/like`)
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(404);
+
+      expect(response.body.error).toBe('Post not found');
+    });
+
+    it('should return 401 without authentication', async () => {
+      await request(app)
+        .delete(`/post/${mockPostId}/like`)
+        .expect(401);
+    });
+  });
+
   describe('GET /post/:id', () => {
-    it('should get a post by ID successfully', async () => {
+    it('should get a post by ID successfully with likeCount and likedByCurrentUser', async () => {
       const mockPost = {
         _id: mockPostId,
         content: 'Test Post',
         senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+        toObject: () => ({ _id: mockPostId, content: 'Test Post', senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' } }),
       };
 
       (MockedPost.findById as jest.Mock) = jest.fn().mockReturnValue({
         populate: jest.fn().mockResolvedValue(mockPost),
+      });
+      (MockedLike.countDocuments as jest.Mock) = jest.fn().mockResolvedValue(5);
+      (MockedLike.findOne as jest.Mock) = jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ postId: mockPostId, userId: mockUserId }),
       });
 
       const response = await request(app)
@@ -316,6 +452,8 @@ describe('Posts Endpoints - Unit Tests', () => {
 
       expect(response.body._id).toBe(mockPostId);
       expect(response.body.content).toBe('Test Post');
+      expect(response.body.likeCount).toBe(5);
+      expect(response.body.likedByCurrentUser).toBe(true);
     });
 
     it('should return 404 for non-existent post', async () => {
@@ -329,6 +467,30 @@ describe('Posts Endpoints - Unit Tests', () => {
         .expect(404);
 
       expect(response.body.error).toBe('Post not found');
+    });
+
+    it('should return likedByCurrentUser false when user has not liked', async () => {
+      const mockPost = {
+        _id: mockPostId,
+        content: 'Test Post',
+        senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' },
+        toObject: () => ({ _id: mockPostId, content: 'Test Post', senderId: { _id: mockUserId, username: 'user1', email: 'user1@test.com' } }),
+      };
+      (MockedPost.findById as jest.Mock) = jest.fn().mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockPost),
+      });
+      (MockedLike.countDocuments as jest.Mock) = jest.fn().mockResolvedValue(2);
+      (MockedLike.findOne as jest.Mock) = jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
+      });
+
+      const response = await request(app)
+        .get(`/post/${mockPostId}`)
+        .set('Authorization', `Bearer ${mockAccessToken}`)
+        .expect(200);
+
+      expect(response.body.likeCount).toBe(2);
+      expect(response.body.likedByCurrentUser).toBe(false);
     });
 
     it('should return 400 for invalid post ID format', async () => {
@@ -401,14 +563,22 @@ describe('Posts Endpoints - Unit Tests', () => {
       expect(response.body.error).toBe('Post not found');
     });
 
-    it('should return 400 for missing content', async () => {
+    it('should return 400 when neither content nor image provided', async () => {
+      const mockPost = {
+        _id: mockPostId,
+        content: 'Original',
+        senderId: { toString: () => mockUserId },
+        save: jest.fn(),
+      };
+      (MockedPost.findById as jest.Mock) = jest.fn().mockResolvedValue(mockPost);
+
       const response = await request(app)
         .put(`/post/${mockPostId}`)
         .set('Authorization', `Bearer ${mockAccessToken}`)
         .send({})
         .expect(400);
 
-      expect(response.body.error).toBe('Content is required');
+      expect(response.body.error).toBe('Provide content and/or image to update');
     });
   });
 
@@ -570,6 +740,79 @@ describe('Comment Count Helper Functions', () => {
       expect(result[0]).toHaveProperty('senderId', 'user123');
       expect(result[0]).toHaveProperty('createdAt');
       expect(result[0]).toHaveProperty('commentCount', 2);
+    });
+  });
+
+  describe('getLikeCountsForPosts', () => {
+    it('should return a map of post IDs to like counts', async () => {
+      const postId1 = new Types.ObjectId();
+      const postId2 = new Types.ObjectId();
+      const postIds = [postId1, postId2];
+
+      (MockedLike.aggregate as jest.Mock) = jest.fn().mockResolvedValue([
+        { _id: postId1, count: 3 },
+        { _id: postId2, count: 1 },
+      ]);
+
+      const result = await getLikeCountsForPosts(postIds);
+
+      expect(MockedLike.aggregate).toHaveBeenCalledWith([
+        { $match: { postId: { $in: postIds } } },
+        { $group: { _id: '$postId', count: { $sum: 1 } } },
+      ]);
+      expect(result.get(postId1.toString())).toBe(3);
+      expect(result.get(postId2.toString())).toBe(1);
+    });
+
+    it('should return empty map when no likes exist', async () => {
+      const postIds = [new Types.ObjectId()];
+      (MockedLike.aggregate as jest.Mock) = jest.fn().mockResolvedValue([]);
+
+      const result = await getLikeCountsForPosts(postIds);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should handle empty postIds array', async () => {
+      const result = await getLikeCountsForPosts([]);
+
+      expect(result.size).toBe(0);
+      expect(MockedLike.aggregate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getLikedByUserForPosts', () => {
+    it('should return set of post IDs liked by user', async () => {
+      const postId1 = new Types.ObjectId();
+      const postId2 = new Types.ObjectId();
+      const postIds = [postId1, postId2];
+      const userId = '507f1f77bcf86cd799439011';
+
+      (MockedLike.find as jest.Mock) = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([{ postId: postId1 }]),
+        }),
+      });
+
+      const result = await getLikedByUserForPosts(postIds, userId);
+
+      expect(MockedLike.find).toHaveBeenCalledWith({ postId: { $in: postIds }, userId });
+      expect(result.has(postId1.toString())).toBe(true);
+      expect(result.has(postId2.toString())).toBe(false);
+    });
+
+    it('should return empty set when userId is empty', async () => {
+      const result = await getLikedByUserForPosts([new Types.ObjectId()], '');
+
+      expect(result.size).toBe(0);
+      expect(MockedLike.find).not.toHaveBeenCalled();
+    });
+
+    it('should handle empty postIds array', async () => {
+      const result = await getLikedByUserForPosts([], 'user123');
+
+      expect(result.size).toBe(0);
+      expect(MockedLike.find).not.toHaveBeenCalled();
     });
   });
 });

@@ -5,8 +5,11 @@ import {
   getPostById,
   updatePost,
   deletePost,
+  addLike,
+  removeLike,
 } from '../controllers/post';
 import { authenticateToken } from '../middleware/auth';
+import { uploadPostImage } from '../middleware/upload';
 
 const router = express.Router();
 
@@ -32,6 +35,16 @@ const router = express.Router();
  *         updatedAt:
  *           type: string
  *           format: date-time
+ *         imagePath:
+ *           type: string
+ *           description: Relative path to post image (e.g. posts/userId-timestamp.jpg)
+ *           nullable: true
+ *         likeCount:
+ *           type: integer
+ *           description: Number of likes (in list/detail responses)
+ *         likedByCurrentUser:
+ *           type: boolean
+ *           description: Whether the current user liked this post (in list/detail responses)
  */
 
 /**
@@ -45,7 +58,7 @@ const router = express.Router();
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -53,9 +66,11 @@ const router = express.Router();
  *             properties:
  *               content:
  *                 type: string
- *                 description: Post content
- *           example:
- *             content: "This is my first post!"
+ *                 description: Post content (required)
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional image file (JPEG, PNG, WebP, max 2MB)
  *     responses:
  *       201:
  *         description: Post created successfully
@@ -68,7 +83,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized - token required
  */
-router.post('/', authenticateToken, createPost);
+router.post('/', authenticateToken, uploadPostImage, createPost);
 
 /**
  * @swagger
@@ -136,6 +151,74 @@ router.get('/', authenticateToken, getAllPosts);
 
 /**
  * @swagger
+ * /post/{id}/like:
+ *   post:
+ *     summary: Like a post
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Post ID
+ *     responses:
+ *       201:
+ *         description: Post liked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 liked:
+ *                   type: boolean
+ *                   example: true
+ *       200:
+ *         description: Already liked (idempotent)
+ *       404:
+ *         description: Post not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/:id/like', authenticateToken, addLike);
+
+/**
+ * @swagger
+ * /post/{id}/like:
+ *   delete:
+ *     summary: Remove like from a post
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Post ID
+ *     responses:
+ *       200:
+ *         description: Like removed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 liked:
+ *                   type: boolean
+ *                   example: false
+ *       404:
+ *         description: Post not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete('/:id/like', authenticateToken, removeLike);
+
+/**
+ * @swagger
  * /post/{id}:
  *   get:
  *     summary: Get post by ID
@@ -181,18 +264,18 @@ router.get('/:id', authenticateToken, getPostById);
  *           type: string
  *         description: Post ID
  *     requestBody:
- *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required:
- *               - content
  *             properties:
  *               content:
  *                 type: string
- *           example:
- *             content: "Updated post content"
+ *                 description: Updated post content (optional)
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional new image (replaces existing)
  *     responses:
  *       200:
  *         description: Post updated successfully
@@ -209,7 +292,7 @@ router.get('/:id', authenticateToken, getPostById);
  *       401:
  *         description: Unauthorized - token required
  */
-router.put('/:id', authenticateToken, updatePost);
+router.put('/:id', authenticateToken, uploadPostImage, updatePost);
 
 /**
  * @swagger
